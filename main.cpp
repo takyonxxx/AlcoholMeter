@@ -1,11 +1,9 @@
-#include "mainwindow.h"
-
-#include <QApplication>
+#include <QCoreApplication>
+#include "alcoholmeter.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+    QCoreApplication a(argc, argv);
+    AlcoholMeter meter;
     return a.exec();
 }

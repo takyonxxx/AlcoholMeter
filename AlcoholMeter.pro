@@ -1,8 +1,7 @@
-QT       += core gui
+QT += core gui bluetooth network
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-
-CONFIG += c++17
+CONFIG += c++17 console
+CONFIG -= app_bundle
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -18,14 +17,16 @@ linux-rasp-pi-g++ {
 }
 
 SOURCES += \
-    main.cpp \
-    mainwindow.cpp
+    alcoholmeter.cpp \
+    gattserver.cpp \
+    kalmanfilter.cpp \
+    main.cpp
 
 HEADERS += \
-    mainwindow.h
-
-FORMS += \
-    mainwindow.ui
+    alcoholmeter.h \
+    gattserver.h \
+    kalmanfilter.h \
+    message.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
