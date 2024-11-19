@@ -7,14 +7,7 @@ CONFIG -= app_bundle
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-# Check if we're on Linux and ARM (Raspberry Pi)
-linux-rasp-pi-g++ {
-    DEFINES += RASPBERRYPI
-    LIBS += -lwiringPi
-    message("Building for Raspberry Pi")
-} else {
-    message("Building for non-Raspberry Pi platform")
-}
+LIBS += -lwiringPi
 
 SOURCES += \
     alcoholmeter.cpp \

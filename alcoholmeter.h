@@ -1,4 +1,3 @@
-// alcoholmeter.h
 #ifndef ALCOHOLMETER_H
 #define ALCOHOLMETER_H
 
@@ -31,25 +30,13 @@ public:
     void startMeasurement();
     void stopMeasurement();
     void performCalibration();
-    float getCurrentR0() const;    
+    float getCurrentR0() const;
 
-#ifdef RASPBERRYPI
-    static void setPinHigh(uint8_t pin) {
-        digitalWrite(pin, HIGH);
-        qDebug() << "Set GPIO" << pin << "HIGH";
-    }
-
-    static void setPinLow(uint8_t pin) {
-        digitalWrite(pin, LOW);
-        qDebug() << "Set GPIO" << pin << "LOW";
-    }
-
-    static bool readPin(uint8_t pin) {
-        return digitalRead(pin) == HIGH;
-    }
+    void setPinHigh(uint8_t pin);
+    void setPinLow(uint8_t pin);
+    bool readPin(uint8_t pin);
     void safePowerUp();
     void safePowerDown();
-#endif
 
 signals:
     void measurementUpdated(float bac);

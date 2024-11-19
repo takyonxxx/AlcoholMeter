@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui bluetooth
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -9,14 +9,39 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    bluetoothclient.cpp \
+    deviceinfo.cpp \
+    ioshelper.mm \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h
+    bluetoothclient.h \
+    deviceinfo.h \
+    mainwindow.h \
+    message.h
 
 FORMS += \
     mainwindow.ui
+
+ios {
+    message("ios enabled")
+    OBJECTIVE_SOURCES += $$PWD/ioshelper.mm
+    LIBS += -framework CoreBluetooth
+    QMAKE_INFO_PLIST = ./ios/Info.plist
+    ios_capabilities.name = Background Modes
+    ios_capabilities.mode = bluetooth-central bluetooth-peripheral
+    QMAKE_IOS_CAPABILITIES += ios_capabilities
+    QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
+    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
+}
+
+macos {
+    message("macos enabled")
+    QMAKE_INFO_PLIST = ./macos/Info.plist
+    QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
+    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
+}
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

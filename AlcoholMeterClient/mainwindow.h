@@ -7,6 +7,8 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QDebug>
+#include "bluetoothclient.h"
+#include "message.h"
 
 #if defined(Q_OS_ANDROID)
 #include <QJniObject>
@@ -27,6 +29,9 @@ public:
 private slots:
     void toggleMeasurement();
     void recalibrate();
+    void statusChanged(const QString &status);
+    void changedState(BluetoothClient::bluetoothleState state);
+    void dataHandler(QByteArray data);
 
 private:
 
@@ -34,11 +39,24 @@ private:
     void requestAndroidPermissions();
 #endif
 
-    void updateMeasurement(float bac);
+    void updateMeasurement(float bac, float r0);
+    void requestData(uint8_t command);
+    void sendData(uint8_t command, float value);
+
+#if defined(Q_OS_IOS)
+    void requestIOSPermissions();
+#endif
+
+    BluetoothClient *m_bleConnection{nullptr};
+    Message message;
+
+    float R0 = 0.18f;
+    float bac = 0.0;
 
     // UI Elements
     QLabel *titleLabel;
-    QLabel *measurementLabel;
+    QLabel* valueLabel;
+    QLabel* unitLabel;
     QLabel *statusLabel;
     QLabel *calibrationLabel;  // New label to show R0 value
     QPushButton *startStopButton;

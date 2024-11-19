@@ -4,6 +4,10 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 
+#if defined(Q_OS_IOS)
+extern "C" void requestIOSBluetoothPermissions();
+#endif
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("Alcohol Meter");
@@ -11,6 +15,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
 #if defined(Q_OS_ANDROID)
     requestAndroidPermissions();
+#endif
+
+#if defined(Q_OS_IOS)
+    requestIOSBluetoothPermissions();
 #endif
 
     QWidget *centralWidget = new QWidget(this);
@@ -29,10 +37,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     calibrationLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(calibrationLabel);
 
-    measurementLabel = new QLabel("0.00 mg/L", this);
-    measurementLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
-    measurementLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(measurementLabel);
+    QWidget* measurementWidget = new QWidget(this);
+    QVBoxLayout* measurementLayout = new QVBoxLayout(measurementWidget);
+    measurementLayout->setSpacing(0);  // Remove spacing between labels
+    measurementLayout->setAlignment(Qt::AlignCenter);
+
+    // Value label
+    valueLabel = new QLabel(QString::number(bac, 'f', 2), this);
+    valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+    valueLabel->setAlignment(Qt::AlignCenter);
+    measurementLayout->addWidget(valueLabel);
+
+    // Unit label
+    unitLabel = new QLabel("mg/L", this);
+    unitLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+    unitLabel->setAlignment(Qt::AlignCenter);
+    measurementLayout->addWidget(unitLabel);
+
+    mainLayout->addWidget(measurementWidget);
 
     statusLabel = new QLabel("Status: Ready", this);
     statusLabel->setStyleSheet("QLabel { font-size: 24px; }");
@@ -66,6 +88,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(startStopButton, &QPushButton::clicked, this, &MainWindow::toggleMeasurement);
     connect(calibrateButton, &QPushButton::clicked, this, &MainWindow::recalibrate);
     connect(exitButton, &QPushButton::clicked, this, &MainWindow::close);
+
+    m_bleConnection = new BluetoothClient();
+
+    connect(m_bleConnection, &BluetoothClient::statusChanged, this, &MainWindow::statusChanged);
+    connect(m_bleConnection, &BluetoothClient::changedState,this, &MainWindow::changedState);
+    m_bleConnection->startScan();
 }
 
 MainWindow::~MainWindow()
@@ -104,7 +132,7 @@ void MainWindow::requestAndroidPermissions()
 void MainWindow::recalibrate()
 {
     if (!isMeasuring) {
-        QMessageBox::information(this, "Calibration", "Sensor calibration completed.\nNew R0 value: " + QString::number(0, 'f', 3));
+
     } else {
         QMessageBox::warning(this, "Calibration", "Please stop measurements before calibrating.");
     }
@@ -123,11 +151,12 @@ void MainWindow::toggleMeasurement()
             "QPushButton:pressed { background-color: #ef6c00; }"
             );
         statusLabel->setText("Status: Starting up... ");
-        startStopButton->setEnabled(false);
+        //startStopButton->setEnabled(false);
         calibrateButton->setEnabled(false);
+        isMeasuring=true;
     } else {
         startStopButton->setText("Start");
-        startStopButton->setEnabled(true);
+        //startStopButton->setEnabled(true);
         calibrateButton->setEnabled(true);
         startStopButton->setStyleSheet(
             "QPushButton { background-color: #4CAF50; color: white; border-radius: 10px; "
@@ -136,21 +165,135 @@ void MainWindow::toggleMeasurement()
             "QPushButton:pressed { background-color: #398439; }"
             );
         statusLabel->setText("Status: Ready");
-        measurementLabel->setText("0.000 mg/L");
-        measurementLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+        valueLabel->setText("0.00");
+        valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+        isMeasuring=false;
     }
 }
 
-void MainWindow::updateMeasurement(float bac)
+void MainWindow::updateMeasurement(float bac, float r0)
 {
-    // Update display
-    measurementLabel->setText(QString::number(bac, 'f', 2) + " mg/L");
-    // Update color based on BAC levels
+    valueLabel->setText(QString::number(bac, 'f', 2));
     if (bac < 0.3) {
-        measurementLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+        valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
     } else if (bac < 0.5) {
-        measurementLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: orange; }");
+        valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: orange; }");
     } else {
-        measurementLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: red; }");
+        valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: red; }");
+    }
+    calibrationLabel->setText(QString("R0: %1").arg(QString::number(R0, 'f', 2)));
+}
+
+void MainWindow::statusChanged(const QString &status)
+{
+    statusLabel->setText(status);
+}
+
+void MainWindow::requestData(uint8_t command)
+{
+    QByteArray payload;
+    QByteArray sendData = message.createMessage(command, mRead, payload);
+
+    // Verify message
+    if (sendData.isEmpty()) {
+        qWarning() << "Failed to create message for command:" << command;
+        return;
+    }
+    m_bleConnection->writeData(sendData);
+}
+
+void MainWindow::sendData(uint8_t command, float value)
+{
+    QByteArray payload = Message::floatToBytes(value);
+    // Create message
+    QByteArray sendData = message.createMessage(command, mWrite, payload);
+
+    // Verify message
+    if (sendData.isEmpty()) {
+        qWarning() << "Failed to create message for command:" << command;
+        return;
+    }
+    m_bleConnection->writeData(sendData);
+}
+
+void MainWindow::changedState(BluetoothClient::bluetoothleState state){
+
+    switch(state){
+
+    case BluetoothClient::Scanning:
+    {
+        statusChanged("Status: Connecting");
+        break;
+    }
+    case BluetoothClient::ScanFinished:
+    {
+        break;
+    }
+
+    case BluetoothClient::Connecting:
+    {
+        break;
+    }
+    case BluetoothClient::Connected:
+    {
+        statusLabel->setText("Status: Ready");
+        connect(m_bleConnection, &BluetoothClient::newData, this, &MainWindow::dataHandler);
+        break;
+    }
+    case BluetoothClient::DisConnected:
+    {
+        statusChanged("Status: Disconnected");
+        break;
+    }
+    case BluetoothClient::ServiceFound:
+    {
+        break;
+    }
+    case BluetoothClient::AcquireData:
+    {
+        requestData(mR0);
+        break;
+    }
+    case BluetoothClient::Error:
+    {
+        break;
+    }
+    default:
+        //nothing for now
+        break;
+    }
+}
+
+void MainWindow::dataHandler(QByteArray data)
+{
+    uint8_t parsedCommand;
+    uint8_t rw;
+    QByteArray parsedValue;
+    auto parsed = message.parseMessage(&data, parsedCommand, parsedValue, rw);
+
+    if(!parsed)return;
+    float value = message.bytesToFloat(parsedValue);
+    qDebug() << "Data Received :" << value;
+
+    if(rw == mWrite)
+    {
+        switch(parsedCommand)
+        {
+        case mR0:
+        {
+            R0 = value;
+            break;
+        }
+        case mCalcVal0:
+        {
+            bac = value;
+            break;
+        }
+
+        default:
+            //nothing for now
+            break;
+        }
+        updateMeasurement(bac, R0);
     }
 }
