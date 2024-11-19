@@ -8,6 +8,15 @@ CONFIG += c++17
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+# Check if we're on Linux and ARM (Raspberry Pi)
+linux-rasp-pi-g++ {
+    DEFINES += RASPBERRYPI
+    LIBS += -lwiringPi
+    message("Building for Raspberry Pi")
+} else {
+    message("Building for non-Raspberry Pi platform")
+}
+
 SOURCES += \
     main.cpp \
     mainwindow.cpp
@@ -17,8 +26,6 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui
-
-LIBS += -lwiringPi
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
