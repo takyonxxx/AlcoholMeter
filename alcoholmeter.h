@@ -18,7 +18,7 @@ public:
     static constexpr int READ_SAMPLES = 100;              // Number of samples for averaging
     static constexpr float CLEAN_AIR_FACTOR = 70.0f;      // RS/R0 ratio in clean air
     static constexpr int MEASUREMENT_INTERVAL = 1000;      // 1 second between measurements
-    static constexpr int WARMUP_TIME = 3;                 // 3 second warmup
+    static constexpr int WARMUP_TIME = 5;                 // 5 second warmup
 
     static constexpr uint8_t MQ3_POWER_PIN     = 17;  // GPIO17 - Pin 11 - Control sensor power
     static constexpr uint8_t MQ3_STATUS_PIN    = 27;  // GPIO27 - Pin 13 - Get D0, Alcohol status
@@ -29,7 +29,6 @@ public:
     // Public interface methods
     void startMeasurement();
     void stopMeasurement();
-    void performCalibration();
     float getCurrentR0() const;
 
     void setPinHigh(uint8_t pin);
@@ -52,7 +51,7 @@ private:
     float calibrateSensor();
     void toggleMeasurement();
     void sendData(uint8_t command, float value);
-    void sendString(uint8_t command, QString value);
+    void sendString(QString value);
 
     GattServer *gattServer{nullptr};
 

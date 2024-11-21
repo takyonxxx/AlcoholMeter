@@ -22,6 +22,7 @@ constexpr uint8_t mR0               = 0xb4;
 constexpr uint8_t mStart            = 0xc0;
 constexpr uint8_t mStop             = 0xc1;
 constexpr uint8_t mCalibrate        = 0xc2;
+constexpr uint8_t mString           = 0xd0;
 
 constexpr size_t MaxPayload = 1024;  // Max payload size in bytes
 
@@ -135,23 +136,20 @@ public:
     bool parseMessage(QByteArray *data, uint8_t &command, QByteArray &value,  uint8_t &rw)
     {
         MessagePack parsedMessage;
-
         uint8_t* dataToParse = reinterpret_cast<uint8_t*>(data->data());
-        QByteArray returnValue;
 
         if(parse(dataToParse, (uint8_t)data->length(), &parsedMessage))
         {
             command = parsedMessage.command;
             rw = parsedMessage.rw;
 
-            for(int i = 0; i< parsedMessage.len; i++)
+            // Subtract 2 from len to exclude checksum bytes
+            for(int i = 0; i < (parsedMessage.len - 2); i++)
             {
                 value.append(parsedMessage.data[i]);
             }
-
             return true;
         }
-
         return false;
     }
 

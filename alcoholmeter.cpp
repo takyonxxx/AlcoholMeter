@@ -48,6 +48,10 @@ AlcoholMeter::AlcoholMeter(QObject *parent)
 
     // Initial calibration
     R0 = calibrateSensor();
+    sendData(mR0, R0);
+    QString msg = QString("Status: Ready").simplified();
+    qDebug().noquote() << msg;
+    sendString(msg);
 }
 
 AlcoholMeter::~AlcoholMeter()
@@ -74,16 +78,6 @@ void AlcoholMeter::stopMeasurement()
     }
 }
 
-void AlcoholMeter::performCalibration()
-{
-    if (!isMeasuring) {
-        R0 = calibrateSensor();
-        qDebug() << "Calibration completed. New R0:" << R0;
-    } else {
-        qDebug() << "Please stop measurements before calibrating.";
-    }
-}
-
 float AlcoholMeter::getCurrentR0() const
 {
     return R0;
@@ -97,7 +91,10 @@ int AlcoholMeter::readADC(int addr)
 
 float AlcoholMeter::calibrateSensor()
 {
-    qDebug() << "Calibrating sensor...";
+    QString msg = QString("Status: Calibrating").simplified();
+    qDebug().noquote() << msg;
+    sendString(msg);
+
     float sensorValue = 0;
 
     // Get average reading
@@ -117,12 +114,6 @@ float AlcoholMeter::calibrateSensor()
         R0 = RS_air / CLEAN_AIR_FACTOR;
     }
 
-    qDebug() << "Calibration Results:";
-    qDebug() << "Average ADC Value:" << sensorValue;
-    qDebug() << "Sensor Voltage:" << sensor_volt << "V";
-    qDebug() << "RS_air:" << RS_air;
-    qDebug() << "R0:" << R0;
-
     return R0;
 }
 
@@ -141,13 +132,18 @@ void AlcoholMeter::toggleMeasurement()
         safePowerUp();
         warmupCount = WARMUP_TIME;
         qDebug() << "Starting measurement...";
-        qDebug() << "Warming up..." << warmupCount << "s";
+        QString msg = QString("Warming up... %1s").arg(warmupCount).simplified();
+        qDebug().noquote() << msg;
+        sendString(msg);
         warmupTimer->start();
     } else {
         warmupTimer->stop();
         measurementTimer->stop();
         safePowerDown();
         qDebug() << "Measurement stopped.";
+        QString msg = QString("Status: Ready").simplified();
+        qDebug().noquote() << msg;
+        sendString(msg);
     }
 }
 
@@ -155,18 +151,21 @@ void AlcoholMeter::updateWarmup()
 {
     warmupCount--;
     if (warmupCount > 0) {
-        qDebug() << "Warming up..." << warmupCount << "s";
+        QString msg = QString("Warming up... %1s").arg(warmupCount).simplified();
+        qDebug().noquote() << msg;
+        sendString(msg);
     } else {
         warmupTimer->stop();
         measurementTimer->start();
-        qDebug() << "Warmup complete. Starting measurements...";
+        QString msg = QString("Status: Measuring").simplified();
+        qDebug().noquote() << msg;
+        sendString(msg);
     }
 }
 
 void AlcoholMeter::updateMeasurement()
 {
     float sensorValue = 0;
-
     p_end = QDateTime::currentDateTime();
     qint64 elapsedTimeMillis = p_start.msecsTo(p_end);
 
@@ -178,9 +177,12 @@ void AlcoholMeter::updateMeasurement()
     sensorValue = sensorValue / READ_SAMPLES;
 
     p_dt = elapsedTimeMillis / 1000.0;
-
-    kalmanBac.Update(sensorValue, measurementVariance, p_dt);
-    sensorValue = kalmanBac.GetXAbs();
+    if (p_dt > 0) {
+        kalmanBac.Update(sensorValue, measurementVariance, p_dt);
+        sensorValue = kalmanBac.GetXAbs();
+    } else {
+        qDebug() << "Warning: Time delta too small, skipping Kalman update";
+    }
 
     // Calculate sensor voltage
     float sensor_volt = (sensorValue / VOLT_RESOLUTION) * ADS1115_VOLTAGE_RANGE;
@@ -205,15 +207,12 @@ void AlcoholMeter::updateMeasurement()
     sendData(mCalcVal0, bac);
     sendData(mAdc0, sensor_volt);
 
-    // Output results
-    qDebug() << "\nMeasurement Results:";
     qDebug() << "Raw ADC Value:" << sensorValue;
     qDebug() << "Sensor Voltage:" << sensor_volt << "V";
     qDebug() << "RS:" << RS;
     qDebug() << "RS/R0 ratio:" << rs_ro_ratio;
     qDebug() << "BAC:" << bac << "mg/L";
 
-    // Emit the result for any connected slots
     emit measurementUpdated(bac);
     p_start = p_end;
 }
@@ -221,10 +220,8 @@ void AlcoholMeter::updateMeasurement()
 void AlcoholMeter::sendData(uint8_t command, float value)
 {
     QByteArray payload = Message::floatToBytes(value);
-    // Create message
     QByteArray sendData = message.createMessage(command, mWrite, payload);
 
-    // Verify message
     if (sendData.isEmpty()) {
         qWarning() << "Failed to create message for command:" << command;
         return;
@@ -232,11 +229,11 @@ void AlcoholMeter::sendData(uint8_t command, float value)
     gattServer->writeValue(sendData);
 }
 
-void AlcoholMeter::sendString(uint8_t command, QString value)
+void AlcoholMeter::sendString(QString value)
 {
     QByteArray bytedata;
     bytedata = value.toLocal8Bit();
-    QByteArray sendData = message.createMessage(command, mWrite, bytedata);
+    QByteArray sendData = message.createMessage(mString, mWrite, bytedata);
     gattServer->writeValue(sendData);
 }
 
@@ -247,8 +244,6 @@ void AlcoholMeter::onConnectionStatedChanged(bool state)
 
 void AlcoholMeter::onDataReceived(QByteArray data)
 {
-    qDebug() << "Received : " << data.toHex();
-
     uint8_t parsedCommand;
     uint8_t rw;
     QByteArray parsedValue;
@@ -300,19 +295,20 @@ void AlcoholMeter::onDataReceived(QByteArray data)
         case mStart:
         {
             startMeasurement();
-            qDebug() << QString("Start Measurement...");
             break;
         }
         case mStop:
         {
             stopMeasurement();
-            qDebug() << QString("Stop Measurement...");
             break;
         }
         case mCalibrate:
         {
-            calibrateSensor();
-            qDebug() << QString("Calibrate Sensor...");
+            R0 = calibrateSensor();
+            sendData(mR0, R0);
+            QString msg = QString("Status: Ready").simplified();
+            qDebug().noquote() << msg;
+            sendString(msg);
             break;
         }
         default:

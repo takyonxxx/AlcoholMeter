@@ -1,3 +1,4 @@
+
 #include "mainwindow.h"
 #include <QRandomGenerator>
 #include <QWidget>
@@ -287,7 +288,6 @@ void MainWindow::dataHandler(QByteArray data)
 
     if(!parsed)return;
     float value = message.bytesToFloat(parsedValue);
-    qDebug() << "Data Received :" << value;
 
     if(rw == mWrite)
     {
@@ -301,6 +301,12 @@ void MainWindow::dataHandler(QByteArray data)
         case mCalcVal0:
         {
             bac = value;
+            break;
+        }
+        case mString:
+        {
+            QString strValue = QString::fromLocal8Bit(parsedValue).simplified();
+            statusChanged(strValue);
             break;
         }
 
