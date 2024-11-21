@@ -47,8 +47,7 @@ AlcoholMeter::AlcoholMeter(QObject *parent)
     digitalWrite(MQ3_POWER_PIN, LOW);
 
     // Initial calibration
-    //R0 = calibrateSensor();
-    qDebug() << "Initial R0:" << R0;
+    R0 = calibrateSensor();
 }
 
 AlcoholMeter::~AlcoholMeter()
@@ -248,6 +247,8 @@ void AlcoholMeter::onConnectionStatedChanged(bool state)
 
 void AlcoholMeter::onDataReceived(QByteArray data)
 {
+    qDebug() << "Received : " << data.toHex();
+
     uint8_t parsedCommand;
     uint8_t rw;
     QByteArray parsedValue;
@@ -255,7 +256,6 @@ void AlcoholMeter::onDataReceived(QByteArray data)
 
     if(!parsed)return;
     float value = message.bytesToFloat(parsedValue);
-
     if(rw == mRead)
     {
         switch (parsedCommand)

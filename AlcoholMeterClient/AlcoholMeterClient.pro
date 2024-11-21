@@ -11,7 +11,6 @@ CONFIG += c++17
 SOURCES += \
     bluetoothclient.cpp \
     deviceinfo.cpp \
-    ioshelper.mm \
     main.cpp \
     mainwindow.cpp
 
@@ -25,7 +24,7 @@ FORMS += \
     mainwindow.ui
 
 ios {
-    message("ios enabled")
+    message("ios enabled")    
     OBJECTIVE_SOURCES += $$PWD/ioshelper.mm
     LIBS += -framework CoreBluetooth
     QMAKE_INFO_PLIST = ./ios/Info.plist

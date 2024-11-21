@@ -153,6 +153,7 @@ void MainWindow::toggleMeasurement()
         statusLabel->setText("Status: Starting up... ");
         //startStopButton->setEnabled(false);
         calibrateButton->setEnabled(false);
+        sendData(mStart, 0);
         isMeasuring=true;
     } else {
         startStopButton->setText("Start");
@@ -167,6 +168,7 @@ void MainWindow::toggleMeasurement()
         statusLabel->setText("Status: Ready");
         valueLabel->setText("0.00");
         valueLabel->setStyleSheet("QLabel { font-size: 72px; font-weight: bold; color: green; }");
+        sendData(mStop, 0);
         isMeasuring=false;
     }
 }

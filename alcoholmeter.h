@@ -67,6 +67,8 @@ private:
     float adc3 = 0.0;
     QTimer *measurementTimer;
     QTimer *warmupTimer;
+    QTimer *adcTimer;          // New timer for ADC readings
+
     KalmanFilter kalmanBac{0.1};
     double measurementVariance = 0.5;
     double timeDelta = 0.1;

@@ -263,6 +263,7 @@ void BluetoothClient::writeData(QByteArray data)
     if(m_service && m_writeCharacteristic.isValid())
     {
         m_service->writeCharacteristic(m_writeCharacteristic, data, m_writeMode);
+        qDebug() << "Send:" << m_writeCharacteristic.uuid() << data.toHex();
     }
 }
 
