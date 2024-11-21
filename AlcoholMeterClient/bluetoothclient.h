@@ -43,6 +43,7 @@ public:
     void writeData(QByteArray data);
     void setState(BluetoothClient::bluetoothleState newState);
     BluetoothClient::bluetoothleState getState() const;
+    bool isConnected() const;
     void getDeviceList(QList<QString> &qlDevices);
     void disconnectFromDevice();
 

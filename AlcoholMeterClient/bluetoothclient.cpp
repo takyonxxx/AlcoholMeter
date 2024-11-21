@@ -279,3 +279,7 @@ void BluetoothClient::setState(BluetoothClient::bluetoothleState newState)
 BluetoothClient::bluetoothleState BluetoothClient::getState() const {
     return m_state;
 }
+
+bool BluetoothClient::isConnected() const {
+    return m_state == Connected || m_state == ServiceFound || m_state == AcquireData;
+}

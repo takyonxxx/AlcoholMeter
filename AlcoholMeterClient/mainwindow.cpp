@@ -131,8 +131,14 @@ void MainWindow::requestAndroidPermissions()
 
 void MainWindow::recalibrate()
 {
-    if (!isMeasuring) {
+    if(!m_bleConnection->isConnected())
+    {
+        QMessageBox::warning(this, "Connection Error", "Device is not connected.\nPlease connect to device first.");
+        return;
+    }
 
+    if (!isMeasuring) {
+        sendData(mCalibrate, 0);
     } else {
         QMessageBox::warning(this, "Calibration", "Please stop measurements before calibrating.");
     }
@@ -140,6 +146,12 @@ void MainWindow::recalibrate()
 
 void MainWindow::toggleMeasurement()
 {
+    if(!m_bleConnection->isConnected())
+    {
+        QMessageBox::warning(this, "Connection Error", "Device is not connected.\nPlease connect to device first.");
+        return;
+    }
+
     isMeasuring = !isMeasuring;
 
     if (isMeasuring) {
