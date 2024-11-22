@@ -48,10 +48,7 @@ AlcoholMeter::AlcoholMeter(QObject *parent)
 
     // Initial calibration
     R0 = calibrateSensor();
-    sendData(mR0, R0);
-    QString msg = QString("Status: Ready").simplified();
-    qDebug().noquote() << msg;
-    sendString(msg);
+    sendData(mR0, R0);   
 }
 
 AlcoholMeter::~AlcoholMeter()
@@ -95,25 +92,32 @@ float AlcoholMeter::calibrateSensor()
     qDebug().noquote() << msg;
     sendString(msg);
 
-    float sensorValue = 0;
+    safePowerUp();
+    QTimer* timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, &QTimer::timeout, this, [this, timer]() {
+        float sensorValue = 0;
+        // Get average reading
+        for(int x = 0; x < READ_SAMPLES; x++) {
+            sensorValue += readADC(0);
+            QThread::msleep(10);
+        }
+        sensorValue = sensorValue / READ_SAMPLES;
+        float sensor_volt = (sensorValue / VOLT_RESOLUTION) * ADS1115_VOLTAGE_RANGE;
+        float RS_air = 0.0f;
+        if(sensor_volt > 0)
+        {
+            RS_air = (SENSOR_VCC - sensor_volt) / sensor_volt;
+            R0 = RS_air / CLEAN_AIR_FACTOR;
+        }
 
-    // Get average reading
-    for(int x = 0; x < READ_SAMPLES; x++) {
-        sensorValue += readADC(0);
-        QThread::msleep(10);
-    }
-    sensorValue = sensorValue / READ_SAMPLES;
-
-    float sensor_volt = (sensorValue / VOLT_RESOLUTION) * ADS1115_VOLTAGE_RANGE;
-
-    float RS_air = 0.0f;
-    float R0 = 0.18f;
-    if(sensor_volt > 0)
-    {
-        RS_air = (SENSOR_VCC - sensor_volt) / sensor_volt;
-        R0 = RS_air / CLEAN_AIR_FACTOR;
-    }
-
+        safePowerDown();
+        QString msg = QString("Status: Ready").simplified();
+        qDebug().noquote() << msg;
+        sendString(msg);
+        timer->deleteLater();
+    });
+    timer->start(5000);
     return R0;
 }
 
@@ -305,10 +309,7 @@ void AlcoholMeter::onDataReceived(QByteArray data)
         case mCalibrate:
         {
             R0 = calibrateSensor();
-            sendData(mR0, R0);
-            QString msg = QString("Status: Ready").simplified();
-            qDebug().noquote() << msg;
-            sendString(msg);
+            sendData(mR0, R0);            
             break;
         }
         default:
