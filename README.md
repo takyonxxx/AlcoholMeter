@@ -47,4 +47,50 @@ A Raspberry Pi-based alcohol detection system utilizing Bluetooth Low Energy (BL
 - Automatic power-down on disconnection
 - Status monitoring and reporting
 
+## Service Installation
+1. Create service file:
+```bash
+sudo nano /etc/systemd/system/alcoholmeter.service
+```
+
+2. Add configuration:
+```ini
+[Unit]
+Description=AlcoholMeter Service
+After=bluetooth.target network.target
+Requires=bluetooth.target
+
+[Service]
+Type=simple
+ExecStart=/home/pi/AlcoholMeter/AlcoholMeter
+Restart=always
+User=pi
+Group=bluetooth
+WorkingDirectory=/home/pi/AlcoholMeter
+Environment=DISPLAY=:0
+# Add necessary capabilities for Bluetooth
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+SupplementaryGroups=bluetooth
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Enable and start service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable alcoholmeter.service
+sudo systemctl start alcoholmeter.service
+```
+
+4. Check service status:
+```bash
+sudo systemctl status alcoholmeter.service
+```
+
+5. View service logs:
+```bash
+sudo journalctl -fu alcoholmeter.service
+```
+
 This project provides a professional-grade alcohol detection solution with remote monitoring capabilities, suitable for various applications requiring precise alcohol concentration measurements.
