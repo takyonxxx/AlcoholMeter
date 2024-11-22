@@ -43,6 +43,9 @@ AlcoholMeter::AlcoholMeter(QObject *parent)
     }
 
     ads1115Setup(PINBASE, ADS_ADDR);
+
+    QThread::msleep(500);
+
     pinMode(MQ3_POWER_PIN, OUTPUT);
     digitalWrite(MQ3_POWER_PIN, LOW);
 
