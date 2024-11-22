@@ -88,6 +88,7 @@ void BluetoothClient::startScan(){
     setState(Scanning);
     current_device = nullptr;
     m_deviceDiscoveryAgent->start();
+    qDebug() << "startScan";
 }
 
 void BluetoothClient::startConnect(int i){

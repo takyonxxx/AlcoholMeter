@@ -14,14 +14,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     setWindowTitle("Alcohol Meter");
     setStyleSheet("background-color: #f0f0f0;");
 
-#if defined(Q_OS_ANDROID)
-    requestAndroidPermissions();
-#endif
-
-#if defined(Q_OS_IOS)
-    requestIOSBluetoothPermissions();
-#endif
-
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
     setCentralWidget(centralWidget);
@@ -90,10 +82,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(calibrateButton, &QPushButton::clicked, this, &MainWindow::recalibrate);
     connect(exitButton, &QPushButton::clicked, this, &MainWindow::close);
 
+#if defined(Q_OS_ANDROID)
+    requestAndroidPermissions();
+#endif
+
+#if defined(Q_OS_IOS)
+    requestIOSBluetoothPermissions();
+#endif
+
     m_bleConnection = new BluetoothClient();
 
     connect(m_bleConnection, &BluetoothClient::statusChanged, this, &MainWindow::statusChanged);
     connect(m_bleConnection, &BluetoothClient::changedState,this, &MainWindow::changedState);
+
     m_bleConnection->startScan();
 }
 
@@ -113,19 +114,50 @@ void MainWindow::requestAndroidPermissions()
     if (!activity.isValid())
         return;
 
-    jint permission = activity.callMethod<jint>(
-        "checkSelfPermission",
-        "(Ljava/lang/String;)I",
-        QJniObject::fromString("android.permission.BLUETOOTH").object()
-        );
+    jint sdk_version = QJniObject::getStaticField<jint>("android/os/Build$VERSION", "SDK_INT");
 
-    if (permission != 0) { // PERMISSION_GRANTED = 0
-        QJniObject::callStaticMethod<void>(
-            "org/tbiliyor/alcoholmeter/MainActivity",
-            "requestPermission",
-            "(Ljava/lang/String;)V",
-            QJniObject::fromString("android.permission.BLUETOOTH").object()
-            );
+    if (sdk_version >= 31) {
+        // Android 12+ permissions
+        QStringList permissions = {"android.permission.BLUETOOTH_SCAN",
+                                   "android.permission.BLUETOOTH_CONNECT"};
+
+        for (const QString& perm : permissions) {
+            jint permission = activity.callMethod<jint>(
+                "checkSelfPermission",
+                "(Ljava/lang/String;)I",
+                QJniObject::fromString(perm).object()
+                );
+
+            if (permission != 0) {
+                QJniObject::callStaticMethod<void>(
+                    "org/tbiliyor/alcoholmeter/MainActivity",
+                    "requestPermission",
+                    "(Ljava/lang/String;)V",
+                    QJniObject::fromString(perm).object()
+                    );
+            }
+        }
+    } else {
+        // Pre-Android 12 permissions
+        QStringList permissions = {"android.permission.BLUETOOTH",
+                                   "android.permission.BLUETOOTH_ADMIN"};
+
+        for (const QString& perm : permissions) {
+            jint permission = activity.callMethod<jint>(
+                "checkSelfPermission",
+                "(Ljava/lang/String;)I",
+                QJniObject::fromString(perm).object()
+                );
+
+            if (permission != 0) {
+                QJniObject::callStaticMethod<void>(
+                    "org/tbiliyor/alcoholmeter/MainActivity",
+                    "requestPermission",
+                    "(Ljava/lang/String;)V",
+                    QJniObject::fromString(perm).object()
+                    );
+            }
+        }
     }
 }
 #endif
